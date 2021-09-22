@@ -46,20 +46,6 @@
                 "description": "Available address space inside the vnet address space."
             }
         },
-        "cleanContainerName": {
-            "type": "string",
-            "defaultValue": "clean-files",
-            "metadata": {
-                "description": "The Container name to transfer clean scanned blobs to, can be new or existing."
-            }
-        },
-        "quarantineContainerName": {
-            "type": "string",
-            "defaultValue": "quarantine-files",
-            "metadata": {
-                "description": "The Container name to transfer files that contain malware to, can be new or existing."
-            }
-        },
         "appServicePlanSku": {
             "type": "string",
             "defaultValue": "S1",
@@ -74,7 +60,7 @@
                 "P2V2",
                 "P3V2"
             ],
-            "metadata":{
+            "metadata": {
                 "description": "Choose the right App Service Plan to support your needs. The App Service Plan affects the throughput - the amount of data that can be scanned at a certain time. You can modify this configuration any time to support higher loads, the update will cause a few minutes downtime."
             }
         },
@@ -393,10 +379,8 @@
                     ],
                     "properties": {
                         "AzureWebJobsStorage": "[concat('@Microsoft.KeyVault(SecretUri=',reference(variables('hostStorageAccountSecretName')).secretUriWithVersion,')')]",
-                        "cleanContainerName": "[parameters('cleanContainerName')]",
                         "FUNCTIONS_EXTENSION_VERSION": "~3",
                         "FUNCTIONS_WORKER_RUNTIME": "[variables('functionWorkerRuntime')]",
-                        "malwareContainerName": "[parameters('quarantineContainerName')]",
                         "targetContainerName": "[parameters('NameOfTargetContainer')]",
                         "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING": "[concat('@Microsoft.KeyVault(SecretUri=',reference(variables('hostStorageAccountSecretName')).secretUriWithVersion,')')]",
                         "WEBSITE_CONTENTSHARE": "[toLower(variables('functionAppName'))]",

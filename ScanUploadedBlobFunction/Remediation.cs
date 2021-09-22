@@ -1,9 +1,10 @@
 ﻿using Azure.Storage.Blobs;
 using Microsoft.Extensions.Logging;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Blob;
 using System;
+using System.IO;
+using System.Text;
 using System.Threading.Tasks;
+using Azure.Storage.Blobs.Models;
 
 namespace ScanUploadedBlobFunction
 {
@@ -26,53 +27,30 @@ namespace ScanUploadedBlobFunction
                 log.LogInformation($"A malicious file was detected, file name: {scanResults.fileName}, threat type: {scanResults.threatType}");
                 try
                 {
-                    string malwareContainerName = Environment.GetEnvironmentVariable("malwareContainerName");
-                    MoveBlob(scanResults.fileName, srcContainerName, malwareContainerName, log).GetAwaiter().GetResult();
-                    log.LogInformation("A malicious file was detected. It has been moved from the unscanned container to the quarantine container");
+                    ReplaceBlob(scanResults.fileName, srcContainerName, log).GetAwaiter().GetResult();
+                    log.LogInformation("A malicious file was detected. It has been removed and replaced with an placeholder.");
                 }
 
                 catch (Exception e)
                 {
-                    log.LogError($"A malicious file was detected, but moving it to the quarantine storage container failed. {e.Message}");
-                }
-            }
-
-            else
-            {
-                try
-                {
-                    string cleanContainerName = Environment.GetEnvironmentVariable("cleanContainerName");
-                    MoveBlob(scanResults.fileName, srcContainerName, cleanContainerName, log).GetAwaiter().GetResult();
-                    log.LogInformation("The file is clean. It has been moved from the unscanned container to the clean container");
-                }
-
-                catch (Exception e)
-                {
-                    log.LogError($"The file is clean, but moving it to the clean storage container failed. {e.Message}");
+                    log.LogError($"A malicious file was detected, but remediation failed. {e.Message}");
                 }
             }
         }
 
-        private static async Task MoveBlob(string srcBlobName, string srcContainerName, string destContainerName, ILogger log)
+        private static async Task ReplaceBlob(string srcBlobName, string srcContainerName, ILogger log)
         {
-            //Note: if the srcBlob name already exist in the dest container it will be overwritten
-            
             var connectionString = Environment.GetEnvironmentVariable("windefenderstorage");
             var srcContainer = new BlobContainerClient(connectionString, srcContainerName);
-            var destContainer = new BlobContainerClient(connectionString, destContainerName);
-            destContainer.CreateIfNotExists();
 
             var srcBlob = srcContainer.GetBlobClient(srcBlobName);
-            var destBlob = destContainer.GetBlobClient(srcBlobName);
 
-            if (await srcBlob.ExistsAsync())
-            {
-                log.LogInformation("MoveBlob: Started file copy");
-                await destBlob.StartCopyFromUriAsync(srcBlob.Uri);
-                log.LogInformation("MoveBlob: Done file copy");
-                await srcBlob.DeleteAsync();
-                log.LogInformation("MoveBlob: Source file deleted");
-            }
+            await srcBlob.UploadAsync(GenerateStream("This blob was found to contain malware and has been removed."), true);
+        }
+
+        private static Stream GenerateStream(string value)
+        {
+            return new MemoryStream(Encoding.UTF8.GetBytes(value));
         }
     }
 }
